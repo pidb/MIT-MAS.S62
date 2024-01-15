@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"crypto/sha256"
+	"fmt"
+)
 
 /*
 A note about the provided keys and signatures:
@@ -77,7 +80,7 @@ endian encoding described here.
 // signatures.go file.
 // The Forge function is tested by TestForgery() in forge_test.go, so if you
 // run "go test" and everything passes, you should be all set.
-func Forge() (string, Signature, error) {
+func ForgeTodo() (string, Signature, error) {
 	// decode pubkey, all 4 signatures into usable structures from hex strings
 	pub, err := HexToPubkey(hexPubkey1)
 	if err != nil {
@@ -119,13 +122,32 @@ func Forge() (string, Signature, error) {
 	fmt.Printf("ok 3: %v\n", Verify(msgslice[2], pub, sig3))
 	fmt.Printf("ok 4: %v\n", Verify(msgslice[3], pub, sig4))
 
-	msgString := "my forged message"
+	msgString := "my forge message"
 	var sig Signature
 
 	// your code here!
 	// ==
 	// Geordi La
 	// ==
+	var sec SecretKey
+	for i, sig := range sigslice {
+		for j := 0; j < 256; j++ {
+			mask := (msgslice[i][i/8] >> (7 - (i % 8))) & 0x01
+			if mask == 0 {
+				if pub.ZeroHash[j] == sha256.Sum256(sig.Preimage[j][:]) {
+					sec.ZeroPre[j] = sig.Preimage[j]
+					// fmt.Printf("i=%d, %x\n", j, sec.ZeroPre[j])
+				}
+			} else {
+				if pub.OneHash[j] == sha256.Sum256(sig.Preimage[j][:]) {
+					sec.OnePre[j] = sig.Preimage[j]
+					// fmt.Printf("i=%d, %x\n", j, sec.OnePre[j])
+				}
+			}
+		}
+	}
+
+	sig = Sign(GetMessageFromString(msgString), sec)
 
 	return msgString, sig, nil
 

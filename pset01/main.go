@@ -57,12 +57,12 @@ func main() {
 	fmt.Printf("Verify worked? %v\n", worked)
 
 	// Forge signature
-	msgString, sig, err := Forge()
-	if err != nil {
-		panic(err)
-	}
+	// msgString, sig, err := Forge()
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	fmt.Printf("forged msg: %s sig: %s\n", msgString, sig.ToHex())
+	// fmt.Printf("forged msg: %s sig: %s\n", msgString, sig.ToHex())
 
 	return
 }
@@ -258,44 +258,27 @@ func GenerateKey() (SecretKey, PublicKey, error) {
 func Sign(msg Message, sec SecretKey) Signature {
 	var sig Signature
 
-	for i := 0; i < len(msg); i++ {
-		for j := 0; j < 8; j++ {
-			mask := byte(1 << uint(j))
-			idx := i*8 + j
-			if msg[i]&mask == 0 {
-				sig.Preimage[idx] = sec.ZeroPre[idx]
-			} else {
-				sig.Preimage[idx] = sec.OnePre[idx]
-			}
+	for i := 0; i < 256; i++ {
+		mask := (msg[i/8] >> (7 - (i % 8))) & 0x1
+		if mask == 0 {
+			sig.Preimage[i] = sec.ZeroPre[i]
+		} else {
+			sig.Preimage[i] = sec.OnePre[i]
 		}
 	}
-
 	return sig
 }
 
 // Verify takes a message, public key and signature, and returns a boolean
 // describing the validity of the signature.
 func Verify(msg Message, pub PublicKey, sig Signature) bool {
-	for i := 0; i < len(msg); i++ {
-		for j := 0; j < 8; j++ {
-			mask := byte(1 << uint(j))
-			idx := i*8 + j
-			if msg[i]&mask == 0 {
-				sigHash := sha256.Sum256(sig.Preimage[idx][:])
-				pubHash := pub.ZeroHash[idx]
-				if sigHash != pubHash {
-					return false
-				}
-
-			} else {
-				sigHash := sha256.Sum256(sig.Preimage[idx][:])
-				pubHash := pub.OneHash[idx]
-				if sigHash != pubHash {
-					return false
-				}
+	for i := 0; i < 256; i++ {
+		sigHash := sha256.Sum256(sig.Preimage[i][:])
+		for j := range sigHash {
+			if sigHash[j] != pub.ZeroHash[i][j] && sigHash[j] != pub.OneHash[i][j] {
+				return false
 			}
 		}
 	}
-
 	return true
 }
